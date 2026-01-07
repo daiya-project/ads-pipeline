@@ -1,0 +1,222 @@
+body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; background-color: #f8fafc; color: #334155; }
+
+/* Follow up 체크박스 스타일 */
+input[type="checkbox"][name="followup"]:checked {
+    background-color: #fee2e2 !important;
+    border-color: #dc2626 !important;
+    accent-color: #dc2626;
+}
+
+input[type="checkbox"][name="followup"]:checked + span {
+    color: #dc2626;
+}
+
+/* Follow up 체크박스가 체크된 label 배경색 */
+label:has(input[type="checkbox"][name="followup"]:checked) {
+    background-color: #fee2e2;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid #dc2626;
+}
+
+.font-mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.custom-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
+.custom-scroll::-webkit-scrollbar-track { background: transparent; }
+.custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+.custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+.loader { border: 2px solid #e2e8f0; border-top: 2px solid #3b82f6; border-radius: 50%; width: 18px; height: 18px; animation: spin 0.8s linear infinite; }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+.table-container { 
+  background: white; 
+  border-radius: 0.75rem; 
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  border: 1px solid #e2e8f0;
+  overflow: auto; 
+  position: relative; 
+}
+
+/* 테이블 레이아웃 고정 (중요: 정렬 맞춤용) */
+table { width: 100%; min-width: 1600px; border-collapse: separate; border-spacing: 0; table-layout: fixed; } 
+
+thead th { 
+  position: sticky; top: 0; background-color: #f8fafc; z-index: 10; 
+  border-bottom: 1px solid #e2e8f0; 
+  font-weight: 600; color: #64748b; font-size: 0.675rem; 
+  text-transform: uppercase; letter-spacing: 0.05em; padding: 0.875rem 0.5rem; 
+  text-align: center;
+  cursor: pointer; /* 커서 추가 */
+  user-select: none; /* 드래그 방지 */
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/* 정렬 헤더 디자인 */
+th:hover { background-color: #f1f5f9; color: #334155; }
+th.sort-active { color: #2563eb; background-color: #eff6ff; border-bottom: 2px solid #2563eb; }
+
+/* 헤더 내용 정렬 (중앙 정렬) */
+.header-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    gap: 4px;
+}
+.sort-icon {
+    font-size: 14px !important;
+    color: #cbd5e1;
+    margin-left: 4px;
+}
+th:hover .sort-icon { color: #94a3b8; }
+th.sort-active .sort-icon { color: #2563eb; font-weight: bold; }
+
+
+tbody td { 
+  padding: 0.75rem 0.5rem; border-bottom: 1px solid #f1f5f9; 
+  font-size: 0.75rem; color: #475569; white-space: nowrap; vertical-align: middle; 
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 0;
+}
+tbody tr:last-child td { border-bottom: none; }
+tbody tr.hover-row:hover { background-color: #f8fafc; }
+
+/* Column Widths (히스토리 정렬을 위해 div에도 적용되도록 함) */
+.col-date { width: 7%; min-width: 112px; max-width: 112px; }
+.col-prod { width: 5%; min-width: 80px; max-width: 80px; }
+.col-client { width: 11%; min-width: 176px; max-width: 176px; }
+.col-camp { width: 11%; min-width: 176px; max-width: 176px; }
+.col-count { width: 5%; min-width: 80px; max-width: 80px; text-align: center; }
+.col-followup { width: 5%; min-width: 80px; max-width: 80px; text-align: center; }
+.col-owner { width: 6%; min-width: 96px; max-width: 96px; }
+.col-action { width: 7%; min-width: 112px; max-width: 112px; }
+.col-stage { width: 9%; min-width: 144px; max-width: 144px; }
+.col-budget { width: 9%; min-width: 144px; max-width: 144px; }
+.col-memo { width: 12%; min-width: 192px; max-width: 192px; }
+.col-contact { width: 6%; min-width: 96px; max-width: 96px; }
+.col-phone { width: 7%; min-width: 112px; max-width: 112px; }
+.col-email { width: 5%; min-width: 80px; max-width: 80px; }
+
+/* 히스토리 로우 내부 스타일 */
+.history-row-container {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 6px 0.5rem; /* td padding과 맞춤 */
+}
+/* 히스토리 내부 텍스트 정렬 */
+.history-row-container .col-budget { text-align: center; }
+.history-row-container .col-memo { text-align: left; }
+.history-cell-container .col-budget { text-align: center; }
+
+
+/* Nav Buttons */
+.btn-toolbar { 
+  height: 2.5rem; 
+  padding-left: 1rem; padding-right: 1rem; 
+  border-radius: 0.5rem; 
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  font-weight: 500; color: #64748b; 
+  border: 1px solid transparent;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  background-color: white;
+  font-size: 0.875rem;
+}
+.btn-toolbar:hover { background-color: #f1f5f9; color: #1e293b; }
+
+.btn-toolbar.active-board { background-color: #ecfdf5; color: #059669; border-color: #a7f3d0; font-weight: 700; box-shadow: 0 0 0 1px #a7f3d0; }
+.btn-toolbar.active-active { background-color: #eff6ff; color: #2563eb; border-color: #bfdbfe; font-weight: 700; box-shadow: 0 0 0 1px #bfdbfe; }
+.btn-toolbar.active-pipe { background-color: #fff1f2; color: #e11d48; border-color: #fecdd3; font-weight: 700; box-shadow: 0 0 0 1px #fecdd3; }
+
+/* Filter Buttons */
+.btn-filter {
+    height: 2.2rem; 
+    width: 6rem;
+    font-size: 0.75rem; 
+    border-radius: 0.5rem;
+    border: 1px solid #e2e8f0; 
+    color: #64748b; 
+    background: white; 
+    transition: all 0.2s; 
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.btn-filter:hover { border-color: #cbd5e1; color: #475569; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+
+/* Filter Active States */
+.filter-call.active { background-color: #f1f5f9; color: #475569; border-color: #e2e8f0; } 
+.filter-mail.active { background-color: #e0e7ff; color: #3730a3; border-color: #c7d2fe; }
+.filter-meet.active { background-color: #fef3c7; color: #92400e; border-color: #fde68a; }
+
+.input-clean {
+    height: 2.5rem; border: 1px solid #e2e8f0; border-radius: 0.5rem;
+    padding: 0 0.75rem; font-size: 0.7rem; outline: none; background: white; color: #334155; width: 100%; transition: all 0.2s;
+}
+.input-clean:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1); }
+.input-clean:disabled { background-color: #f1f5f9; color: #94a3b8; cursor: not-allowed; opacity: 0.6; }
+
+.modal-backdrop { background-color: rgba(15, 23, 42, 0.4); backdrop-filter: blur(2px); }
+.btn-count { cursor: pointer; color: #2563eb; font-weight: 700; background-color: #eff6ff; padding: 2px 8px; border-radius: 9999px; transition: all 0.2s; border: 1px solid #dbeafe; }
+.btn-count:hover { background-color: #2563eb; color: white; border-color: #2563eb; }
+.btn-edit { font-size: 1rem; color: #cbd5e1; cursor: pointer; transition: color 0.2s; margin-left: 4px; }
+.btn-edit:hover { color: #3b82f6; }
+
+/* Tooltip Styles */
+.info-icon-wrapper { position: relative; display: flex; align-items: center; justify-content: center; margin-left: 4px; cursor: help; }
+.info-icon { font-size: 12px; color: #94a3b8; transition: color 0.2s; }
+.info-icon:hover { color: #64748b; }
+
+.custom-tooltip {
+  visibility: hidden; opacity: 0;
+  position: absolute; bottom: 160%; left: 50%; transform: translateX(-50%);
+  width: max-content; max-width: 250px;
+  background-color: #1e293b; color: white;
+  text-align: center; border-radius: 6px; padding: 6px 10px;
+  font-size: 11px; font-weight: 500; line-height: 1.4;
+  z-index: 50; pointer-events: none;
+  transition: opacity 0.2s, visibility 0.2s;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+.custom-tooltip::after {
+  content: ""; position: absolute; top: 100%; left: 50%; margin-left: -4px;
+  border-width: 4px; border-style: solid; border-color: #1e293b transparent transparent transparent;
+}
+.info-icon-wrapper:hover .custom-tooltip { visibility: visible; opacity: 1; }
+
+@keyframes slideDown { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+.history-row-content { animation: slideDown 0.2s ease-out; }
+
+/* 필터 & 네비게이션 바 높이 통일 (pipe 섹션 기준) */
+#filter-nav-bar {
+    min-height: 72px;
+    height: auto;
+}
+#filter-container {
+    min-height: 2.5rem; /* input-clean 높이와 동일 */
+    align-items: center;
+}
+
+/* 필터 요소 너비 고정 */
+#global-search {
+    width: 300px;
+    min-width: 300px;
+    max-width: 300px;
+    flex-shrink: 0;
+    font-size: 0.77rem; /* 0.7rem * 1.1 = 10% 증가 */
+}
+#global-filter-product,
+#global-filter-owner,
+#global-filter-stage {
+    width: 8rem; /* w-32 = 128px = 8rem */
+    min-width: 8rem;
+    max-width: 8rem;
+    flex-shrink: 0;
+    font-size: 0.77rem; /* 0.7rem * 1.1 = 10% 증가 */
+}

@@ -1,0 +1,61 @@
+# OS 관련 파일
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# 에디터 관련 파일
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# 로그 파일
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 환경 변수 파일
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 의존성 디렉토리
+node_modules/
+bower_components/
+
+# 빌드 파일
+dist/
+build/
+*.min.js
+*.min.css
+
+# 임시 파일
+*.tmp
+*.temp
+.cache/
+
+# 백업 파일
+*.bak
+*.backup
+*~
+
+# CSV 임포트 파일 (민감한 데이터가 포함될 수 있음)
+# 필요한 경우 주석 해제
+# *.csv
+# backups/*.csv
+
+# SQL 파일 (민감한 정보가 포함될 수 있음)
+# 필요한 경우 주석 해제
+# *.sql
