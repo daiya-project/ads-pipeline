@@ -4,6 +4,7 @@ let filteredPipelines = [];
 let sortState = { field: null, direction: null };
 let currentSection = 'active';
 let fullHistoryCache = []; // Board 섹션용 액션 히스토리 캐시
+let expandedAccordionId = null; // 현재 열려있는 아코디언의 uniqueId 저장
 
 // Supabase에서 데이터 로드
 async function loadPipelineData() {
@@ -198,16 +199,20 @@ function renderTable() {
         }
         row.appendChild(productCell);
 
-        // CLIENT - 볼드 처리 및 편집 버튼 추가 (텍스트 오버플로우 처리, 텍스트는 중앙 정렬, 버튼은 우측)
+        // CLIENT - 배경색 박스 안에 편집 아이콘 오버레이 (action/stage와 동일한 구조)
         const clientCell = document.createElement('td');
         clientCell.className = 'col-client group';
         clientCell.style.position = 'relative';
+        clientCell.style.textAlign = 'center';
         clientCell.style.cursor = 'pointer';
         const clientName = item.client_name || '-';
-        const clientContent = clientName !== '-' 
-            ? `<div class="flex items-center justify-between gap-1" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span class="text-xs font-bold" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; text-align: center;">${clientName}</span><span class="btn-edit material-symbols-outlined text-[16px] opacity-20 group-hover:opacity-100 flex-shrink-0" onclick="event.stopPropagation(); editClient('${item.unique_id || ''}', '${clientName.replace(/'/g, "\\'")}')" style="pointer-events: auto;">edit</span></div>`
-            : '<span class="text-xs">-</span>';
-        clientCell.innerHTML = clientContent;
+        const clientEditIcon = `<span class="btn-edit material-symbols-outlined text-[16px] opacity-20 group-hover:opacity-100" onclick="event.stopPropagation(); editClient('${item.unique_id || ''}', '${clientName.replace(/'/g, "\\'")}')" style="cursor: pointer; pointer-events: auto; position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%);">edit</span>`;
+        
+        if (clientName !== '-') {
+            clientCell.innerHTML = `<span class="text-xs" style="display: inline-block; width: 100%; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${clientName}</span>${clientEditIcon}`;
+        } else {
+            clientCell.innerHTML = `<span class="text-xs" style="display: inline-block; width: 100%; text-align: center;">-</span>${clientEditIcon}`;
+        }
         row.appendChild(clientCell);
 
         // CAMPAIGN
@@ -221,8 +226,14 @@ function renderTable() {
         cntCell.className = 'col-count';
         const actionCount = item.action_count || 0;
         const uniqueId = item.unique_id || '';
-        if (actionCount > 0) {
-            cntCell.innerHTML = `<span class="btn-count cursor-pointer" onclick="toggleActionHistory('${uniqueId}', this)" data-pipeline-id="${uniqueId}">${actionCount}</span>`;
+        if (actionCount > 1) {
+            // CNT가 2 이상일 때만 화살표 표시 (히스토리가 있을 때만)
+            const isExpanded = expandedAccordionId === uniqueId;
+            const arrowIcon = isExpanded ? 'remove' : 'keyboard_arrow_down';
+            cntCell.innerHTML = `<span class="btn-count cursor-pointer inline-flex items-center gap-1" onclick="toggleActionHistory('${uniqueId}', this)" data-pipeline-id="${uniqueId}" data-accordion-expanded="${isExpanded}">${actionCount}<span class="material-symbols-outlined accordion-arrow" style="font-size: 14px; transition: transform 0.2s;">${arrowIcon}</span></span>`;
+        } else if (actionCount === 1) {
+            // CNT가 1일 때는 화살표 없이 숫자만 표시
+            cntCell.innerHTML = `<span class="btn-count">${actionCount}</span>`;
         } else {
             cntCell.innerHTML = '<span class="text-xs">0</span>';
         }
@@ -235,7 +246,7 @@ function renderTable() {
         const followupValue = item.pipeline_followup;
         const followup = followupValue === true || followupValue === 't' || followupValue === 1 || followupValue === 'true';
         if (followup) {
-            followupCell.innerHTML = '<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-red-100 text-red-600"><span class="material-symbols-outlined" style="font-size:16px;">notifications_active</span></span>';
+            followupCell.innerHTML = `<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-red-100 text-red-600 cursor-pointer hover:bg-red-200 transition-colors" onclick="showFollowupModal('${uniqueId}')" style="pointer-events: auto;"><span class="material-symbols-outlined" style="font-size:16px;">notifications_active</span></span>`;
         } else {
             followupCell.innerHTML = '<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-gray-400"><span class="material-symbols-outlined" style="font-size:16px;">check_circle</span></span>';
         }
@@ -252,33 +263,42 @@ function renderTable() {
         }
         row.appendChild(ownerCell);
 
-        // ACTION: last_action_type - 우측에 + 버튼 추가 (크기 0.9배, 텍스트는 중앙 정렬, 버튼은 우측)
+        // ACTION: last_action_type - 배경색 박스 안에 + 버튼 오버레이
         const actionCell = document.createElement('td');
-        actionCell.className = 'col-action';
+        actionCell.className = 'col-action group';
+        actionCell.style.position = 'relative';
+        actionCell.style.textAlign = 'center';
         const actionType = item.last_action_type || '';
         // uniqueId는 위에서 이미 선언됨 (154번째 줄)
+        let actionClass = '';
         let actionText = '';
         
-        // Action Type 표시 (중앙 정렬)
+        // Action Type 표시 (배경색 박스, font-bold 제거)
         if (actionType === 'meeting') {
-            actionText = '<span class="px-2 py-0.5 rounded bg-amber-50 text-amber-700 text-[11px] font-bold border border-amber-100">Meeting</span>';
+            actionClass = 'px-2 py-0.5 rounded bg-amber-50 text-amber-700 text-[11px] border border-amber-100';
+            actionText = 'Meeting';
         } else if (actionType === 'email') {
-            actionText = '<span class="text-indigo-600 font-bold text-xs">Email</span>';
+            actionClass = 'text-indigo-600 text-xs';
+            actionText = 'Email';
         } else if (actionType === 'call') {
-            actionText = '<span class="text-gray-500 font-bold text-xs">Call</span>';
+            actionClass = 'text-gray-500 text-xs';
+            actionText = 'Call';
         } else {
-            actionText = '<span class="text-gray-400 text-xs">-</span>';
+            actionClass = 'text-gray-400 text-xs';
+            actionText = '-';
         }
         
-        // + 버튼 추가 (우측, 크기 0.9배, 더 연한 폰트 컬러)
-        const addButton = `<button onclick="openRecordActionModal('${uniqueId}')" class="material-symbols-outlined hover:text-blue-600 flex-shrink-0" style="font-size: 12.96px; color: #d1d5db;">add</button>`;
+        // + 버튼 추가 (absolute로 우측에 오버레이)
+        const addButton = `<button onclick="openRecordActionModal('${uniqueId}')" class="material-symbols-outlined hover:text-blue-600 opacity-20 group-hover:opacity-100" style="font-size: 12.96px; color: #d1d5db; position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); cursor: pointer; pointer-events: auto;">add</button>`;
         
-        actionCell.innerHTML = `<div class="group flex items-center justify-between gap-1"><span style="flex: 1; text-align: center;">${actionText}</span>${addButton}</div>`;
+        actionCell.innerHTML = `<span class="${actionClass}" style="display: inline-block; width: 100%; text-align: center;">${actionText}</span>${addButton}`;
         row.appendChild(actionCell);
 
-        // STAGE: current_stage - 우측에 편집 아이콘 추가
+        // STAGE: current_stage - 배경색 박스 안에 편집 아이콘 오버레이
         const stageCell = document.createElement('td');
         stageCell.className = 'col-stage group';
+        stageCell.style.position = 'relative';
+        stageCell.style.textAlign = 'center';
         stageCell.style.cursor = 'pointer';
         const stage = item.current_stage || '';
         let stageClass = '';
@@ -289,11 +309,13 @@ function renderTable() {
         else stageClass = 'text-gray-400';
         
         const stageText = formatStage(stage);
-        const stageContent = stage 
-            ? `<span class="${stageClass} text-xs font-medium">${stageText}</span>`
-            : '<span class="text-xs text-gray-400">-</span>';
-        const editIcon = `<span class="btn-edit material-symbols-outlined text-[16px] opacity-20 group-hover:opacity-100 flex-shrink-0" onclick="event.stopPropagation(); editLastAction('${uniqueId}')" style="pointer-events: auto;">edit</span>`;
-        stageCell.innerHTML = `<div class="flex items-center justify-between gap-1"><span style="flex: 1; text-align: center;">${stageContent}</span>${stage ? editIcon : ''}</div>`;
+        const editIcon = `<span class="btn-edit material-symbols-outlined text-[16px] opacity-20 group-hover:opacity-100" onclick="event.stopPropagation(); editLastAction('${uniqueId}')" style="cursor: pointer; pointer-events: auto; position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%);">edit</span>`;
+        
+        if (stage) {
+            stageCell.innerHTML = `<span class="${stageClass} text-xs font-medium" style="display: inline-block; width: 100%; text-align: center;">${stageText}</span>${editIcon}`;
+        } else {
+            stageCell.innerHTML = `<span class="text-xs text-gray-400" style="display: inline-block; width: 100%; text-align: center;">-</span>${editIcon}`;
+        }
         row.appendChild(stageCell);
 
         // BUDGET: current_budget - font-mono 적용
@@ -311,7 +333,7 @@ function renderTable() {
             const shortMemo = memo.length > 30 ? memo.substring(0, 30) + '...' : memo;
             // HTML 특수문자 이스케이프 후 onclick에 전달
             const safeMemo = memo.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
-            memoCell.innerHTML = `<span class="cursor-pointer text-xs hover:text-blue-600" onclick="showMemoModal('${safeMemo}')">${shortMemo}</span>`;
+            memoCell.innerHTML = `<span class="cursor-pointer text-xs hover:text-blue-600 hover:underline" onclick="showMemoModal('${safeMemo}')">${shortMemo}</span>`;
         } else {
             memoCell.innerHTML = '<span class="text-gray-400 text-xs">-</span>';
         }
@@ -344,6 +366,17 @@ function renderTable() {
 
         tbody.appendChild(row);
     });
+    
+    // 아코디언 상태 복원 (PIPE, Active 섹션에서 수정 후 아코디언 유지)
+    if (expandedAccordionId && (currentSection === 'pipe' || currentSection === 'active')) {
+        const restoredRow = document.querySelector(`tr .btn-count[data-pipeline-id="${expandedAccordionId}"]`);
+        if (restoredRow) {
+            // 약간의 지연을 두어 DOM이 완전히 렌더링된 후 아코디언 열기
+            setTimeout(() => {
+                toggleActionHistory(expandedAccordionId, restoredRow);
+            }, 50);
+        }
+    }
 }
 
 // 액션 히스토리 토글 (아코디언)
@@ -363,6 +396,13 @@ async function toggleActionHistory(uniqueId, clickedElement) {
                 nextSibling = nextSibling.nextElementSibling;
                 toRemove.remove();
             }
+            expandedAccordionId = null; // 아코디언 닫힘 상태 저장
+            // 화살표 아이콘 업데이트
+            const arrowIcon = clickedElement.querySelector('.accordion-arrow');
+            if (arrowIcon) {
+                arrowIcon.textContent = 'keyboard_arrow_down';
+            }
+            clickedElement.setAttribute('data-accordion-expanded', 'false');
         } else {
             // 다른 모든 열려있는 아코디언 닫기
             const allHistoryRows = document.querySelectorAll('.history-row');
@@ -420,14 +460,22 @@ async function toggleActionHistory(uniqueId, clickedElement) {
                 prodCell.innerHTML = '';
                 historyRow.appendChild(prodCell);
 
-                // Client (0.95배 크기, 굵은 폰트 제거, 중앙 정렬)
+                // Client (배경색 박스 안에 편집 아이콘 오버레이, action/stage와 동일한 구조)
                 const clientCell = document.createElement('td');
-                clientCell.className = 'col-client';
+                clientCell.className = 'col-client group';
                 clientCell.style.backgroundColor = '#fafbfc';
                 clientCell.style.padding = '0.75rem 0.5rem';
                 clientCell.style.textAlign = 'center';
+                clientCell.style.position = 'relative';
+                clientCell.style.cursor = 'pointer';
                 const clientName = pipeline.client_name || '-';
-                clientCell.innerHTML = `<span style="font-size: 0.7125rem; ${clientName === '-' ? 'color: #cbd5e1;' : ''}">${clientName}</span>`;
+                const editIcon = `<span class="btn-edit material-symbols-outlined text-[16px] opacity-20 group-hover:opacity-100" onclick="event.stopPropagation(); editClient('${uniqueId}', '${clientName.replace(/'/g, "\\'")}')" style="cursor: pointer; pointer-events: auto; position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%);">edit</span>`;
+                
+                if (clientName !== '-') {
+                    clientCell.innerHTML = `<span style="font-size: 0.7125rem; display: inline-block; width: 100%; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${clientName}</span>${editIcon}`;
+                } else {
+                    clientCell.innerHTML = `<span style="font-size: 0.7125rem; color: #cbd5e1; display: inline-block; width: 100%; text-align: center;">-</span>${editIcon}`;
+                }
                 historyRow.appendChild(clientCell);
 
                 // Campaign (0.95배 크기)
@@ -471,31 +519,45 @@ async function toggleActionHistory(uniqueId, clickedElement) {
                 ownerCell.innerHTML = '';
                 historyRow.appendChild(ownerCell);
 
-                // Action (0.95배 크기, 굵은 폰트 제거, 중앙 정렬)
+                // Action (배경색 박스 안에 + 버튼 오버레이)
                 const actionCell = document.createElement('td');
-                actionCell.className = 'col-action';
+                actionCell.className = 'col-action group';
                 actionCell.style.backgroundColor = '#fafbfc';
                 actionCell.style.padding = '0.75rem 0.5rem';
                 actionCell.style.textAlign = 'center';
+                actionCell.style.position = 'relative';
                 const actionType = action.action_type || '';
+                let actionClass = '';
+                let actionText = '';
+                
                 if (actionType === 'meeting') {
-                    actionCell.innerHTML = '<span class="px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-100" style="font-size: 0.7125rem;">Meeting</span>';
+                    actionClass = 'px-2 py-0.5 rounded bg-amber-50 text-amber-700 text-[11px] border border-amber-100';
+                    actionText = 'Meeting';
                 } else if (actionType === 'email') {
-                    actionCell.innerHTML = '<span class="text-indigo-600" style="font-size: 0.7125rem;">Email</span>';
+                    actionClass = 'text-indigo-600 text-xs';
+                    actionText = 'Email';
                 } else if (actionType === 'call') {
-                    actionCell.innerHTML = '<span class="text-gray-500" style="font-size: 0.7125rem;">Call</span>';
+                    actionClass = 'text-gray-500 text-xs';
+                    actionText = 'Call';
                 } else {
-                    actionCell.innerHTML = '<span style="font-size: 0.7125rem; color: #cbd5e1;">-</span>';
+                    actionClass = 'text-gray-400 text-xs';
+                    actionText = '-';
                 }
+                
+                // + 버튼 추가 (absolute로 우측에 오버레이)
+                const addButton = `<button onclick="openRecordActionModal('${uniqueId}')" class="material-symbols-outlined hover:text-blue-600 opacity-20 group-hover:opacity-100" style="font-size: 12.96px; color: #d1d5db; position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); cursor: pointer; pointer-events: auto;">add</button>`;
+                
+                actionCell.innerHTML = `<span class="${actionClass}" style="display: inline-block; width: 100%; text-align: center;">${actionText}</span>${addButton}`;
                 historyRow.appendChild(actionCell);
 
-                // Stage (0.95배 크기, 굵은 폰트 제거, 수정 버튼 추가, 중앙 정렬)
+                // Stage (원본 표와 동일한 스타일 적용, 텍스트는 중앙 정렬, 펜은 우측 정렬)
                 const stageCell = document.createElement('td');
                 stageCell.className = 'col-stage group';
                 stageCell.style.backgroundColor = '#fafbfc';
                 stageCell.style.padding = '0.75rem 0.5rem';
                 stageCell.style.textAlign = 'center';
                 stageCell.style.cursor = 'pointer';
+                stageCell.style.position = 'relative';
                 const stage = action.stage || '';
                 const actionId = action.id || '';
                 if (stage) {
@@ -506,9 +568,9 @@ async function toggleActionHistory(uniqueId, clickedElement) {
                     else if (stage === 'lead') stageClass = 'text-blue-500';
                     else stageClass = 'text-gray-400';
                     const stageText = formatStage(stage);
-                    stageCell.innerHTML = `<div class="flex items-center justify-center gap-1"><span class="${stageClass}" style="font-size: 0.7125rem;">${stageText}</span><span class="btn-edit material-symbols-outlined text-[16px] opacity-20 group-hover:opacity-100 flex-shrink-0" onclick="event.stopPropagation(); openEditActionModal('${uniqueId}', '${actionId}')" style="cursor: pointer; pointer-events: auto;">edit</span></div>`;
+                    stageCell.innerHTML = `<span class="${stageClass} text-xs font-medium" style="display: inline-block; width: 100%; text-align: center;">${stageText}</span><span class="btn-edit material-symbols-outlined text-[16px] opacity-20 group-hover:opacity-100" onclick="event.stopPropagation(); openEditActionModal('${uniqueId}', '${actionId}')" style="cursor: pointer; pointer-events: auto; position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%);">edit</span>`;
                 } else {
-                    stageCell.innerHTML = '<span style="font-size: 0.7125rem; color: #cbd5e1;">-</span>';
+                    stageCell.innerHTML = `<span class="text-xs text-gray-400" style="display: inline-block; width: 100%; text-align: center;">-</span><span class="btn-edit material-symbols-outlined text-[16px] opacity-20 group-hover:opacity-100" onclick="event.stopPropagation(); openEditActionModal('${uniqueId}', '${actionId}')" style="cursor: pointer; pointer-events: auto; position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%);">edit</span>`;
                 }
                 historyRow.appendChild(stageCell);
 
@@ -544,6 +606,13 @@ async function toggleActionHistory(uniqueId, clickedElement) {
                     row.parentNode.insertBefore(historyRow, insertAfter.nextSibling);
                 }
             });
+            expandedAccordionId = uniqueId; // 아코디언 열림 상태 저장
+            // 화살표 아이콘 업데이트
+            const arrowIcon = clickedElement.querySelector('.accordion-arrow');
+            if (arrowIcon) {
+                arrowIcon.textContent = 'remove';
+            }
+            clickedElement.setAttribute('data-accordion-expanded', 'true');
         }
     } catch (error) {
         console.error('액션 히스토리 로드 오류:', error);
@@ -812,6 +881,21 @@ function clearGlobalSearch() {
 function switchSection(section) {
     currentSection = section;
     
+    // 섹션 이동 시 열린 아코디언 닫기
+    const allHistoryRows = document.querySelectorAll('.history-row');
+    allHistoryRows.forEach(historyRow => {
+        historyRow.remove();
+    });
+    expandedAccordionId = null;
+    // 모든 CNT 버튼의 화살표 아이콘 초기화
+    document.querySelectorAll('.btn-count[data-pipeline-id]').forEach(btn => {
+        const arrowIcon = btn.querySelector('.accordion-arrow');
+        if (arrowIcon) {
+            arrowIcon.textContent = 'keyboard_arrow_down';
+        }
+        btn.setAttribute('data-accordion-expanded', 'false');
+    });
+    
     // 표 깜빡임 효과 (섹션 전환 시각화)
     const tableContainer = document.querySelector('.table-container');
     if (tableContainer) {
@@ -895,6 +979,86 @@ function showMemoModal(memo) {
 
 function closeMemoModal() {
     document.getElementById('memoModal').classList.add('hidden');
+}
+
+// Follow-up 모달
+async function showFollowupModal(pipelineId) {
+    try {
+        const client = window.supabaseClient;
+        if (!client) {
+            throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
+        }
+
+        // action_followup이 true인 action log들 가져오기
+        const { data: followupActions, error } = await client
+            .from('crm_client_actions')
+            .select('stage, memo, action_date')
+            .eq('pipeline_id', pipelineId)
+            .eq('action_followup', true)
+            .order('action_date', { ascending: false });
+
+        if (error) throw error;
+
+        const followupContent = document.getElementById('followupContent');
+        if (!followupContent) return;
+
+        if (!followupActions || followupActions.length === 0) {
+            followupContent.innerHTML = '<p class="text-gray-400 text-center py-4">Follow-up이 필요한 액션이 없습니다.</p>';
+        } else {
+            let html = '<div class="space-y-4">';
+            followupActions.forEach((action, index) => {
+                const stageText = formatStage(action.stage) || '-';
+                const memo = action.memo || '-';
+                const actionDate = action.action_date || '-';
+                
+                // HTML 이스케이프 처리
+                const escapeHtml = (text) => {
+                    if (!text) return '-';
+                    const div = document.createElement('div');
+                    div.textContent = text;
+                    return div.innerHTML;
+                };
+                
+                const safeStageText = escapeHtml(stageText);
+                const safeMemo = escapeHtml(memo);
+                const safeActionDate = escapeHtml(actionDate);
+                
+                html += `
+                    <div class="border-b border-gray-200 pb-3 last:border-b-0">
+                        <div class="flex items-start gap-3">
+                            <div class="flex-shrink-0 w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center font-bold text-xs">${index + 1}</div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="text-xs font-medium text-gray-500">Date:</span>
+                                    <span class="text-xs text-gray-700 font-mono">${safeActionDate}</span>
+                                    <span class="text-xs font-medium text-gray-500 ml-4">Stage:</span>
+                                    <span class="text-xs font-medium text-gray-800">${safeStageText}</span>
+                                </div>
+                                <div class="mt-2">
+                                    <span class="text-xs font-medium text-gray-500 block mb-1">Memo:</span>
+                                    <div class="text-xs text-gray-700 whitespace-pre-wrap bg-white p-2 rounded border border-gray-200">${safeMemo}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            followupContent.innerHTML = html;
+        }
+
+        const followupModal = document.getElementById('followupModal');
+        if (followupModal) {
+            followupModal.classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error('Follow-up 모달 로드 오류:', error);
+        alert('Follow-up 정보를 불러오는 중 오류가 발생했습니다.');
+    }
+}
+
+function closeFollowupModal() {
+    document.getElementById('followupModal').classList.add('hidden');
 }
 
 // 모달 토글
@@ -1289,6 +1453,25 @@ async function handleEditSubmit(event) {
             if (updateError) throw updateError;
         }
 
+        // PIPE 섹션에서 수정하는 경우 현재 열려있는 아코디언 상태 저장
+        if (currentSection === 'pipe') {
+            const historyRows = document.querySelectorAll('.history-row');
+            if (historyRows.length > 0) {
+                // 현재 열려있는 아코디언의 uniqueId 찾기
+                const firstHistoryRow = historyRows[0];
+                const parentRow = firstHistoryRow.previousElementSibling;
+                if (parentRow) {
+                    const cntButton = parentRow.querySelector('.btn-count[data-pipeline-id]');
+                    if (cntButton) {
+                        expandedAccordionId = cntButton.getAttribute('data-pipeline-id');
+                    }
+                }
+            }
+        }
+        
+        // 토스트 메시지 먼저 표시
+        showToast('PIPELINE 정보가 수정되었습니다');
+        
         // 모달 닫기
         toggleModal('editModal');
         
@@ -1299,8 +1482,6 @@ async function handleEditSubmit(event) {
         // 데이터 새로고침 (약간의 지연을 두어 DB 업데이트가 완료되도록 함)
         await new Promise(resolve => setTimeout(resolve, 100));
         await loadPipelineData();
-        
-        showToast('PIPELINE 정보가 수정되었습니다');
     } catch (error) {
         console.error('수정 오류:', error);
         alert(error.message || '파이프라인 정보 수정 중 오류가 발생했습니다.');
@@ -1660,14 +1841,31 @@ async function handleEditActionSubmit(event) {
         
         if (pipelineUpdateError) throw pipelineUpdateError;
 
+        // PIPE, Active 섹션에서 수정하는 경우 현재 열려있는 아코디언 상태 저장
+        if (currentSection === 'pipe' || currentSection === 'active') {
+            const historyRows = document.querySelectorAll('.history-row');
+            if (historyRows.length > 0) {
+                // 현재 열려있는 아코디언의 uniqueId 찾기
+                const firstHistoryRow = historyRows[0];
+                const parentRow = firstHistoryRow.previousElementSibling;
+                if (parentRow) {
+                    const cntButton = parentRow.querySelector('.btn-count[data-pipeline-id]');
+                    if (cntButton) {
+                        expandedAccordionId = cntButton.getAttribute('data-pipeline-id');
+                    }
+                }
+            }
+        }
+        
+        // 토스트 메시지 먼저 표시
+        showToast('SALES ACTION 정보가 수정되었습니다');
+        
         // 모달 닫기
         toggleModal('editActionModal');
         
         // 데이터 새로고침 (약간의 지연을 두어 DB 업데이트가 완료되도록 함)
         await new Promise(resolve => setTimeout(resolve, 100));
         await loadPipelineData();
-        
-        showToast('SALES ACTION 정보가 수정되었습니다');
     } catch (error) {
         console.error('액션 수정 오류:', error);
         alert(error.message || '액션 정보 수정 중 오류가 발생했습니다.');
